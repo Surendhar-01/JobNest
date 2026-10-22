@@ -387,6 +387,10 @@ export function Layout() {
     )
   }
 
+  if (location.pathname.startsWith('/admin')) {
+    return <Outlet />
+  }
+
   return (
     <AntLayout style={{ minHeight: '100vh', background: '#f8fafc' }} className="app">
       {/* Top Navigation Bar */}

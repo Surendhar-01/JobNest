@@ -37,6 +37,8 @@ The platform features an intelligent dual-mode repository:
 1. **Cloud Mode (Supabase):** Set `SUPABASE_URL` and `SUPABASE_ANON_KEY` in `backend/.env` and `frontend/.env` to connect to Supabase PostgreSQL, row-level security (RLS), and bucket storage.
 2. **Local / Offline Mode (Default):** Runs immediately without external credentials! Uses a persistent SQLite database (`backend/data/app.db`), local resume storage (`backend/data/resumes/`), and local JWT authentication.
 
+For an existing Supabase database, re-apply `database/schema.sql` before using the updated admin console. The script adds account activation and collection insert/update counters idempotently. SQLite applies these columns automatically at startup.
+
 ---
 
 ## 2. Key Features
@@ -55,11 +57,12 @@ The platform features an intelligent dual-mode repository:
 - **Application Tracker:** Manage opportunities across 5 lifecycle stages (`Saved`, `Applied`, `Interview`, `Offer`, `Rejected`), with application notes and timestamped audit history.
 
 ### Admin Console
-- **Analytics Overview:** KPI cards for registered users, active jobs, resumes analyzed, and scraping runs.
-- **Visualizations:** Department distribution chart and jobs-by-source breakdown.
-- **Scraping Management:** Live scraping log monitor, status filters, and "Run Scraper Now" trigger for approved sources.
-- **Manual Job Import:** Modal form for authorized personnel to publish listings directly.
-- **Role Verification:** Server-side role validation preventing unauthorized access.
+- **Dedicated Admin Workspace:** Responsive, collapsible console navigation for overview, users, jobs, sources, collections, analytics, and audit logs.
+- **Platform Overview:** Live registered-user, job, source, and collection metrics with department/source charts, skills, recent runs, refresh state, and errors.
+- **Account and Job Management:** Searchable, filterable tables; confirmed account activation controls; job detail inspection and supported listing status.
+- **Source and Collection Controls:** Safe source configuration status, refresh intervals, manual collection trigger, and run history with inserted/updated counts.
+- **Analytics and Audit:** Location, skills, collection trend, and user growth charts plus read-only administrative activity.
+- **Role Verification:** Admin routes and operations are protected by server-side role checks; inactive accounts are rejected by the API.
 
 ---
 
@@ -250,10 +253,16 @@ npm run build
 - `PATCH /api/applications/{app_id}` - Update status (`Saved`, `Applied`, `Interview`, `Offer`, `Rejected`)
 
 ### Admin Console
-- `GET /api/admin/stats` - Admin KPI metrics and charts
+- `GET /api/admin/dashboard` - Admin KPIs, inventory charts, trends, refresh status, and recent errors
+- `GET /api/admin/users` - Searchable/paginated user directory
+- `PATCH /api/admin/users/{user_id}` - Update permitted user role or active status
+- `GET /api/admin/jobs` - Searchable and filterable collected listings
+- `GET /api/admin/sources` - Sanitized job-source configuration and latest status
+- `PATCH /api/admin/sources/{source_id}` - Update source enabled status or refresh interval
 - `GET /api/admin/scraping/logs` - History of scraping runs
 - `POST /api/admin/scraping/run` - Trigger scraping execution
-- `POST /api/admin/jobs/manual` - Manually import a verified listing
+- `GET /api/admin/audit-logs` - Read-only administrative activity
+- `POST /api/admin/jobs/import` - Manually import a verified listing
 
 ---
 
@@ -265,4 +274,3 @@ The project is now connected directly to your live Supabase project (`thjntplchm
 - **Seeded Data:** 100 verified opportunities initialized in `public.jobs`.
 - **Default Institution:** Pre-configured for **K S Rangasamy College of Technology (Autonomous)** (Campus: *KSR Kalvi Nagar, Tiruchengode*). All newly registered student accounts and dashboard profiles default to this institution automatically.
 - **Configured Environments:** Both [backend/.env](file:///c:/Users/suren/OneDrive/Desktop/Job/ai-job-recommendation/backend/.env) and [frontend/.env](file:///c:/Users/suren/OneDrive/Desktop/Job/ai-job-recommendation/frontend/.env) are updated with your live URL and keys.
-

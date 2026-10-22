@@ -42,8 +42,16 @@ def collect_claimed(source, log_id):
             raise ValueError('Source returned no valid jobs')
 
         rows = [{**j.model_dump(mode='json'), 'is_demo': source['adapter'] == 'practice'} for j in jobs]
+        existing_ids = {str(row['id']) for row in repo.all('jobs', select='id')}
+        inserted_count = 0
+        updated_count = 0
         for start in range(0, len(rows), 100):
-            repo.write('jobs', rows[start:start+100], conflict='id')
+            batch = rows[start:start+100]
+            batch_existing = {str(row['id']) for row in batch if str(row['id']) in existing_ids}
+            repo.write('jobs', batch, conflict='id')
+            updated_count += len(batch_existing)
+            inserted_count += len(batch) - len(batch_existing)
+            existing_ids.update(str(row['id']) for row in batch)
 
         for job in rows:
             repo.delete('job_skills', {'job_id': 'eq.' + job['id']})
@@ -61,7 +69,13 @@ def collect_claimed(source, log_id):
 
         now = datetime.now(timezone.utc).isoformat()
         repo.update('scraping_sources', {'last_success': now}, {'id': 'eq.' + source['id']})
-        repo.update('scraping_logs', {'status': 'success', 'job_count': len(rows), 'finished_at': now}, {'id': 'eq.' + log_id})
+        repo.update('scraping_logs', {
+            'status': 'success',
+            'job_count': len(rows),
+            'inserted_count': inserted_count,
+            'updated_count': updated_count,
+            'finished_at': now
+        }, {'id': 'eq.' + log_id})
         logging.info('Collected %s jobs from %s', len(rows), source['id'])
     except Exception as exc:
         logging.exception('Collection failed')

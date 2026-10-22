@@ -1,8 +1,10 @@
 import json
+import os
 from collections import Counter
 from datetime import datetime, timezone
 from typing import Annotated, Literal
 from uuid import UUID, uuid4, uuid5, NAMESPACE_URL
+from urllib.parse import urlsplit, urlunsplit
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, EmailStr, Field
 
@@ -14,7 +16,7 @@ from app.database.sqlite_store import (
 )
 from app.schemas.payloads import (
     ProfileUpdate, JobReference, ApplicationCreate, ApplicationUpdate,
-    ResumeReference, ResumeReview, SourceUpdate, JobImport, ScrapeRequest, UserManage
+    ResumeReference, ResumeReview, SourceUpdate, SourceSettingsUpdate, JobImport, ScrapeRequest, UserManage
 )
 from app.services.jobs import jobs_all, find_job, filter_rows, paginate
 from app.services.resumes import upload_resume, analyze_resume, latest_resume
@@ -66,6 +68,38 @@ def audit(user, action, details=None):
         })
     except Exception:
         pass
+
+def safe_source_url(value):
+    try:
+        parsed = urlsplit(str(value))
+        host = parsed.hostname or ''
+        if parsed.port:
+            host = f'{host}:{parsed.port}'
+        return urlunsplit((parsed.scheme, host, parsed.path, '', ''))
+    except ValueError:
+        return ''
+
+def admin_source_view(row, latest_log=None):
+    latest_log = latest_log or {}
+    config = row.get('config')
+    return {
+        'id': row['id'],
+        'name': row['name'],
+        'url': safe_source_url(row.get('url', '')),
+        'permission_url': safe_source_url(row.get('permission_url', '')),
+        'adapter': row.get('adapter'),
+        'enabled': row.get('enabled', False),
+        'permitted': row.get('permitted', False),
+        'interval_seconds': row.get('interval_seconds'),
+        'configuration_status': 'Configured' if config else (
+            'Default configuration' if row.get('adapter') == 'practice' else 'Not configured'
+        ),
+        'access_denied': row.get('access_denied', False),
+        'last_attempt': row.get('last_attempt'),
+        'last_success': row.get('last_success'),
+        'latest_status': latest_log.get('status'),
+        'latest_error': latest_log.get('error')
+    }
 
 # ── Health & Diagnostics ──
 @router.get('/health')
@@ -183,6 +217,8 @@ def auth_login(payload: LoginRequest):
             profiles = Repository(token).select('profiles', {'id': 'eq.' + user_id})
             if not profiles:
                 raise HTTPException(404, 'Profile missing; run migrations')
+            if not profiles[0].get('is_active', True):
+                raise HTTPException(403, 'This account is inactive; contact an administrator')
             return {'token': token, 'user': profiles[0]}
         except HTTPException:
             raise
@@ -204,6 +240,8 @@ def auth_login(payload: LoginRequest):
     profiles = Repository(token).select('profiles', {'id': 'eq.' + user_id})
     if not profiles:
         raise HTTPException(404, 'Profile missing; run migrations')
+    if not profiles[0].get('is_active', True):
+        raise HTTPException(403, 'This account is inactive; contact an administrator')
     return {'token': token, 'user': profiles[0]}
 
 @router.post('/auth/demo-login')
@@ -230,8 +268,12 @@ def auth_demo_login(payload: DemoLoginRequest):
                 'college': DEFAULT_COLLEGE,
                 'current_location': DEFAULT_LOCATION,
             }
+            if not profile.get('is_active', True):
+                raise HTTPException(403, 'This account is inactive; contact an administrator')
             return {'token': token, 'user': profile}
         except Exception as e:
+            if isinstance(e, HTTPException):
+                raise
             raise HTTPException(401, f"Supabase demo authentication failed: {e}")
 
     conn = get_connection()
@@ -246,6 +288,8 @@ def auth_demo_login(payload: DemoLoginRequest):
     user_id = row['id']
     token = create_jwt_token(user_id, demo_email, row['role'])
     profile = Repository(token).select('profiles', {'id': 'eq.' + user_id})[0]
+    if not profile.get('is_active', True):
+        raise HTTPException(403, 'This account is inactive; contact an administrator')
     return {'token': token, 'user': profile}
 
 @router.post('/auth/forgot-password')
@@ -475,36 +519,116 @@ def dashboard(user: User):
 def admin_dashboard(user: Admin):
     repo = Repository(privileged=True)
     all_jobs = repo.all('jobs')
-    logs = repo.select('scraping_logs', order='started_at.desc', limit=100)
+    logs = repo.all(
+        'scraping_logs',
+        order='started_at.desc',
+        select='id,source_id,status,job_count,inserted_count,updated_count,error,started_at,finished_at'
+    )
     resume_statuses = repo.all('resumes', select='id,status')
+    profiles = repo.all('profiles', select='created_at')
+    sources = repo.all('scraping_sources', select='id,enabled,permitted,access_denied,last_success')
+    departments = Counter(j.get('department') or 'Not specified' for j in all_jobs)
+    locations = Counter(j.get('location') or 'Not specified' for j in all_jobs)
+    skills = Counter(
+        str(skill).strip()
+        for job in all_jobs
+        for skill in (job.get('skills') if isinstance(job.get('skills'), list) else [])
+        if str(skill).strip()
+    )
+    job_types = Counter(j.get('job_type') or 'Not specified' for j in all_jobs)
+    latest_successful_refresh = next(
+        (log.get('finished_at') for log in logs if log.get('status') == 'success' and log.get('finished_at')),
+        None
+    )
+    if not latest_successful_refresh:
+        latest_successful_refresh = max(
+            (source.get('last_success') for source in sources if source.get('last_success')),
+            default=None
+        )
+    user_growth = Counter(
+        str(profile['created_at'])[:10]
+        for profile in profiles
+        if profile.get('created_at')
+    )
+    collection_runs = Counter(str(log['started_at'])[:10] for log in logs if log.get('started_at'))
+    collection_jobs = Counter()
+    for log in logs:
+        if log.get('started_at'):
+            collection_jobs[str(log['started_at'])[:10]] += int(log.get('job_count') or 0)
 
     return {
         'users': repo.count('profiles'),
         'jobs': len(all_jobs),
         'active_jobs': sum(bool(j.get('is_active')) for j in all_jobs),
+        'active_sources': sum(
+            bool(source.get('enabled')) and bool(source.get('permitted')) and not bool(source.get('access_denied'))
+            for source in sources
+        ),
         'resumes': len(resume_statuses),
-        'jobs_by_source': dict(Counter(j['source'] for j in all_jobs if j.get('source'))),
-        'jobs_by_department': dict(Counter(j.get('department') or 'Not specified' for j in all_jobs)),
+        'jobs_collected_latest_run': logs[0].get('job_count', 0) if logs else 0,
+        'latest_successful_refresh': latest_successful_refresh,
+        'jobs_by_source': dict(Counter(safe_source_url(j['source']) for j in all_jobs if j.get('source'))),
+        'jobs_by_department': dict(departments),
+        'jobs_by_location': dict(locations),
+        'job_types': dict(job_types),
+        'frequently_requested_skills': dict(skills.most_common(10)),
+        'user_growth': dict(sorted(user_growth.items())),
+        'collection_trends': [
+            {'date': day, 'runs': count, 'jobs': collection_jobs[day]}
+            for day, count in sorted(collection_runs.items())
+        ],
+        'scheduled_refresh': {
+            'enabled': os.getenv('ENABLE_SCHEDULER', 'false').lower() == 'true'
+            and settings.configured() and bool(settings.SERVICE_KEY),
+            'interval_seconds': 300
+        },
         'resume_statuses': dict(Counter(r['status'] for r in resume_statuses if r.get('status'))),
         'collection_statuses': dict(Counter(l['status'] for l in logs if l.get('status'))),
         'recent_logs': logs[:10],
+        'recent_errors': [log for log in logs if log.get('status') == 'failed'][:5],
         'activity': repo.select('admin_activity_logs', order='created_at.desc', limit=10)
     }
 
 @router.get('/admin/users')
-def users(user: Admin, page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100)):
+def users(
+    user: Admin,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    q: str | None = Query(None, max_length=120),
+    role: Literal['student', 'admin'] | None = None,
+    active: bool | None = None
+):
     repo = Repository(privileged=True)
-    rows = repo.select('profiles', order='created_at.desc', limit=page_size, offset=(page-1)*page_size)
-    return {'items': rows, 'total': repo.count('profiles'), 'page': page, 'page_size': page_size}
+    rows = repo.all(
+        'profiles',
+        order='created_at.desc',
+        select='id,full_name,email,role,department,created_at,is_active'
+    )
+    if q:
+        search = q.casefold()
+        rows = [row for row in rows if search in str(row.get('full_name') or '').casefold()
+                or search in str(row.get('email') or '').casefold()]
+    if role:
+        rows = [row for row in rows if row.get('role') == role]
+    if active is not None:
+        rows = [row for row in rows if bool(row.get('is_active', True)) == active]
+    total = len(rows)
+    start = (page - 1) * page_size
+    return {'items': rows[start:start + page_size], 'total': total, 'page': page, 'page_size': page_size}
 
 @router.patch('/admin/users/{user_id}')
 def manage_user(user_id: str, payload: UserManage, user: Admin):
-    if str(user_id) == user.id and payload.role != 'admin':
-        raise HTTPException(409, 'Cannot demote your own administrator account')
-    rows = Repository(privileged=True).update('profiles', payload.model_dump(), {'id': 'eq.' + str(user_id)})
+    values = payload.model_dump(exclude_unset=True, exclude_none=True)
+    if not values:
+        raise HTTPException(422, 'Provide a role or account status to update')
+    if str(user_id) == user.id and (
+        ('role' in values and values['role'] != 'admin') or values.get('is_active') is False
+    ):
+        raise HTTPException(409, 'You cannot deactivate or demote your own administrator account')
+    rows = Repository(privileged=True).update('profiles', values, {'id': 'eq.' + str(user_id)})
     if not rows:
         raise HTTPException(404, 'User not found')
-    audit(user, 'update_user_role', {'user_id': str(user_id), 'role': payload.role})
+    audit(user, 'update_user_account', {'user_id': str(user_id), **values})
     return rows[0]
 
 @router.get('/admin/scraping/logs')
@@ -526,13 +650,35 @@ def run_collection(payload: ScrapeRequest, tasks: BackgroundTasks, user: Admin):
 
 @router.get('/admin/sources')
 def sources(user: Admin):
-    return {'items': Repository(privileged=True).all('scraping_sources')}
+    repo = Repository(privileged=True)
+    rows = repo.all('scraping_sources')
+    latest_logs = {}
+    for log in repo.all(
+        'scraping_logs',
+        order='started_at.desc',
+        select='source_id,status,error,started_at,finished_at'
+    ):
+        latest_logs.setdefault(log.get('source_id'), log)
+    return {
+        'items': [admin_source_view(row, latest_logs.get(row['id'])) for row in rows]
+    }
 
 @router.put('/admin/sources/{source_id}')
 def configure_source(source_id: str, payload: SourceUpdate, user: Admin):
     result = Repository(privileged=True).write('scraping_sources', {'id': source_id, **payload.model_dump(mode='json')}, conflict='id')[0]
     audit(user, 'configure_source', {'source_id': source_id})
-    return result
+    return admin_source_view(result)
+
+@router.patch('/admin/sources/{source_id}')
+def update_source_settings(source_id: str, payload: SourceSettingsUpdate, user: Admin):
+    values = payload.model_dump(exclude_unset=True, exclude_none=True)
+    if not values:
+        raise HTTPException(422, 'Provide source settings to update')
+    rows = Repository(privileged=True).update('scraping_sources', values, {'id': 'eq.' + source_id})
+    if not rows:
+        raise HTTPException(404, 'Source not found')
+    audit(user, 'update_source_settings', {'source_id': source_id, **values})
+    return admin_source_view(rows[0])
 
 @router.post('/admin/sources/{source_id}/clear-block')
 def clear_source(source_id: str, user: Admin):
@@ -540,17 +686,73 @@ def clear_source(source_id: str, user: Admin):
     if not rows:
         raise HTTPException(404, 'Source not found')
     audit(user, 'clear_access_denial', {'source_id': source_id})
-    return rows[0]
+    return admin_source_view(rows[0])
 
 @router.get('/admin/jobs')
-def admin_jobs(user: Admin, page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100)):
+def admin_jobs(
+    user: Admin,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    q: str | None = Query(None, max_length=120),
+    department: str | None = Query(None, max_length=120),
+    location: str | None = Query(None, max_length=120),
+    job_type: str | None = Query(None, max_length=80),
+    source: str | None = Query(None, max_length=500)
+):
     repo = Repository(privileged=True)
+    rows = repo.all('jobs', order='collected_at.desc')
+    if q:
+        search = q.casefold()
+        rows = [row for row in rows if search in str(row.get('title') or '').casefold()
+                or search in str(row.get('company') or '').casefold()]
+    for field, value in (('department', department), ('location', location), ('job_type', job_type)):
+        if value:
+            if value.casefold() == 'not specified':
+                rows = [row for row in rows if not row.get(field)]
+            else:
+                rows = [row for row in rows if str(row.get(field) or '').casefold() == value.casefold()]
+    if source:
+        safe_source = safe_source_url(source).casefold()
+        rows = [row for row in rows if safe_source_url(row.get('source', '')).casefold() == safe_source]
+    total = len(rows)
+    start = (page - 1) * page_size
+    items = rows[start:start + page_size]
+    for row in items:
+        if row.get('source'):
+            row['source'] = safe_source_url(row['source'])
     return {
-        'items': repo.select('jobs', order='collected_at.desc', limit=page_size, offset=(page-1)*page_size),
-        'total': repo.count('jobs'),
+        'items': items,
+        'total': total,
         'page': page,
         'page_size': page_size
     }
+
+@router.get('/admin/audit-logs')
+def admin_audit_logs(
+    user: Admin,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    q: str | None = Query(None, max_length=120)
+):
+    repo = Repository(privileged=True)
+    rows = repo.all('admin_activity_logs', order='created_at.desc')
+    profiles = {
+        str(profile['id']): profile
+        for profile in repo.all('profiles', select='id,email,full_name')
+    }
+    enriched = [{
+        **row,
+        'admin_email': profiles.get(str(row.get('admin_id')), {}).get('email'),
+        'admin_name': profiles.get(str(row.get('admin_id')), {}).get('full_name')
+    } for row in rows]
+    if q:
+        search = q.casefold()
+        enriched = [row for row in enriched if search in ' '.join(
+            str(row.get(field) or '') for field in ('action', 'admin_email', 'admin_name', 'details')
+        ).casefold()]
+    total = len(enriched)
+    start = (page - 1) * page_size
+    return {'items': enriched[start:start + page_size], 'total': total, 'page': page, 'page_size': page_size}
 
 @router.post('/admin/jobs/import')
 def import_job(payload: JobImport, user: Admin):
