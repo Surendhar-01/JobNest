@@ -1,0 +1,12 @@
+**/.venv/
+**/node_modules/
+**/dist/
+**/__pycache__/
+**/.pytest_cache/
+**/.env
+**/.env.local
+backend/data/jobs.csv
+backend/data/jobs.json
+backend/data/collection_state.json
+**/test-results/
+**/playwright-report/
