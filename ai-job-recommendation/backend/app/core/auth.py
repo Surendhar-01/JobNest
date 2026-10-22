@@ -42,6 +42,8 @@ def current_user(credentials: HTTPAuthorizationCredentials | None = Depends(bear
     rows = Repository(token).select('profiles', {'id': 'eq.' + str(user_id)})
     if not rows:
         raise HTTPException(404, 'Profile missing for this user')
+    if not rows[0].get('is_active', True):
+        raise HTTPException(403, 'This account is inactive; contact an administrator')
 
     return Identity(str(user_id), email, token, rows[0])
 

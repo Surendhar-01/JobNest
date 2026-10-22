@@ -67,6 +67,7 @@ def init_db():
         internship_experience TEXT,
         work_experience TEXT,
         experience_years REAL DEFAULT 0,
+        is_active INTEGER NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
     );
@@ -209,6 +210,8 @@ def init_db():
         source_id TEXT NOT NULL,
         status TEXT NOT NULL,
         job_count INTEGER DEFAULT 0,
+        inserted_count INTEGER NOT NULL DEFAULT 0,
+        updated_count INTEGER NOT NULL DEFAULT 0,
         error TEXT,
         started_at TEXT NOT NULL,
         finished_at TEXT,
@@ -229,6 +232,14 @@ def init_db():
     """)
 
     # Backward compatibility column migrations
+    for table, column, definition in [
+        ('profiles', 'is_active', 'INTEGER NOT NULL DEFAULT 1'),
+        ('scraping_logs', 'inserted_count', 'INTEGER NOT NULL DEFAULT 0'),
+        ('scraping_logs', 'updated_count', 'INTEGER NOT NULL DEFAULT 0'),
+    ]:
+        cur.execute(f"PRAGMA table_info({table})")
+        if column not in {row['name'] for row in cur.fetchall()}:
+            cur.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
     for col, col_type in [('created_at', 'TEXT'), ('updated_at', 'TEXT')]:
         try:
             cur.execute(f"ALTER TABLE scraping_logs ADD COLUMN {col} {col_type}")

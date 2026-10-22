@@ -14,6 +14,13 @@ import { Recommendations } from './pages/Recommendations'
 import { SavedJobs } from './pages/SavedJobs'
 import { Applications } from './pages/Applications'
 import { Admin } from './pages/Admin'
+import { AdminLayout } from './layouts/AdminLayout'
+import { AdminUsers } from './pages/admin/AdminUsers'
+import { AdminJobs } from './pages/admin/AdminJobs'
+import { AdminSources } from './pages/admin/AdminSources'
+import { AdminCollections } from './pages/admin/AdminCollections'
+import { AdminAnalytics } from './pages/admin/AdminAnalytics'
+import { AdminAudit } from './pages/admin/AdminAudit'
 
 export function App() {
   return (
@@ -39,7 +46,15 @@ export function App() {
 
         {/* Protected Admin Routes */}
         <Route element={<Protected admin />}>
-          <Route path="/admin" element={<Admin />} />
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<Admin />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="jobs" element={<AdminJobs />} />
+            <Route path="sources" element={<AdminSources />} />
+            <Route path="collections" element={<AdminCollections />} />
+            <Route path="analytics" element={<AdminAnalytics />} />
+            <Route path="audit" element={<AdminAudit />} />
+          </Route>
         </Route>
 
         {/* Fallback */}

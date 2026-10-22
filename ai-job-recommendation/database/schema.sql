@@ -1,4 +1,4 @@
--- Run once in the Supabase SQL editor. Compatible with the earlier jobs table.
+-- Apply in the Supabase SQL editor. Safe to re-run for existing installations.
 create extension if not exists pgcrypto;
 create table if not exists public.profiles (
  id uuid primary key references auth.users(id) on delete cascade,
@@ -11,8 +11,10 @@ create table if not exists public.profiles (
  technical_skills text[] not null default '{}', soft_skills text[] not null default '{}',
  certifications text[] not null default '{}', projects text[] not null default '{}',
  internship_experience text, work_experience text, experience_years numeric check(experience_years >= 0),
+ is_active boolean not null default true,
  created_at timestamptz not null default now(), updated_at timestamptz not null default now()
 );
+alter table public.profiles add column if not exists is_active boolean not null default true;
 create or replace function public.is_admin() returns boolean language sql stable security definer set search_path=public
 as $$ select exists(select 1 from public.profiles where id=auth.uid() and role='admin'); $$;
 create or replace function public.protect_role() returns trigger language plpgsql set search_path=public as $$
@@ -105,9 +107,12 @@ values('fake-jobs','Real Python practice jobs','https://realpython.github.io/fak
 create table if not exists public.scraping_logs (
  id uuid primary key default gen_random_uuid(), source_id text references public.scraping_sources(id),
  status text not null check(status in ('running','success','failed')), job_count integer not null default 0,
+ inserted_count integer not null default 0, updated_count integer not null default 0,
  error text, started_at timestamptz not null default now(), finished_at timestamptz,
  created_at timestamptz not null default now(), updated_at timestamptz not null default now()
 );
+alter table public.scraping_logs add column if not exists inserted_count integer not null default 0;
+alter table public.scraping_logs add column if not exists updated_count integer not null default 0;
 create table if not exists public.admin_activity_logs (
  id uuid primary key default gen_random_uuid(), admin_id uuid references public.profiles(id), action text not null,
  details jsonb not null default '{}', created_at timestamptz not null default now(), updated_at timestamptz not null default now()

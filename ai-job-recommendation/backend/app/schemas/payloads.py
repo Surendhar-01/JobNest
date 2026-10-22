@@ -75,6 +75,10 @@ class SourceUpdate(StrictModel):
     interval_seconds: int = Field(3600,ge=3600,le=2592000)
     config: dict = Field(default_factory=dict)
 
+class SourceSettingsUpdate(StrictModel):
+    enabled: bool | None = None
+    interval_seconds: int | None = Field(None, ge=3600, le=2592000)
+
 class JobImport(StrictModel):
     title: str = Field(min_length=1,max_length=200)
     company: str | None = Field(None,max_length=200)
@@ -100,4 +104,5 @@ class ScrapeRequest(StrictModel):
     source_id: str = 'fake-jobs'
 
 class UserManage(StrictModel):
-    role: Literal['student','admin']
+    role: Literal['student','admin'] | None = None
+    is_active: bool | None = None
