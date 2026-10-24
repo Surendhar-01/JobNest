@@ -604,7 +604,7 @@ def users(
         order='created_at.desc',
         select='id,full_name,email,role,department,created_at,is_active'
     )
-    if q:
+    if q and isinstance(q, str):
         search = q.casefold()
         rows = [row for row in rows if search in str(row.get('full_name') or '').casefold()
                 or search in str(row.get('email') or '').casefold()]

@@ -131,7 +131,7 @@ export function AdminCollections() {
             className="admin-running-alert"
             type="info"
             showIcon
-            message="A collection is already running. Another run can be started after it finishes."
+            title="A collection is already running. Another run can be started after it finishes."
           />
         )}
 

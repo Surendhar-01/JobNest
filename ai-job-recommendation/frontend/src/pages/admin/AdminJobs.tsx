@@ -239,7 +239,7 @@ export function AdminJobs() {
         title={selectedJob?.title || 'Job details'}
         open={Boolean(selectedJob)}
         onClose={() => setSelectedJob(null)}
-        width={560}
+        size={560}
       >
         {selectedJob && (
           <div className="admin-job-detail">

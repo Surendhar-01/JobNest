@@ -53,7 +53,7 @@ export function AdminSources() {
       title: 'Availability',
       key: 'availability',
       render: (_: unknown, source: Source) => (
-        <Space direction="vertical" size={4}>
+        <Space orientation="vertical" size={4}>
           <Tag color={source.enabled && source.permitted && !source.access_denied ? 'success' : 'default'}>
             {source.enabled && source.permitted && !source.access_denied ? 'Active' : 'Inactive'}
           </Tag>
@@ -93,7 +93,7 @@ export function AdminSources() {
       render: (_: unknown, source: Source) => {
         if (!source.latest_status) return <Text type="secondary">No runs yet</Text>
         return (
-          <Space direction="vertical" size={2}>
+          <Space orientation="vertical" size={2}>
             <Tag color={source.latest_status === 'success' ? 'success' : source.latest_status === 'failed' ? 'error' : 'processing'}>
               {source.latest_status}
             </Tag>
