@@ -28,11 +28,15 @@ export function App() {
       <Route element={<Layout />}>
         {/* Public Routes */}
         <Route path="/" element={<Landing />} />
-        <Route path="/jobs" element={<Jobs />} />
         <Route path="/jobs/:id" element={<JobDetail />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+
+        {/* Protected Explore Jobs Route */}
+        <Route element={<Protected allowAdmin />}>
+          <Route path="/jobs" element={<Jobs />} />
+        </Route>
 
         {/* Protected Student Routes */}
         <Route element={<Protected />}>
