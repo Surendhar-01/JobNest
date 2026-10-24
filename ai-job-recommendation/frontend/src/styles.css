@@ -289,7 +289,29 @@ body {
   flex: 1;
   padding: 2rem 2.5rem;
   max-width: 1400px;
-  overflow-x: hidden;
+  overflow: visible;
+}
+
+/* Sticky Filter Card Styles */
+.sticky-filter-card {
+  transition: box-shadow 0.2s ease;
+}
+
+.sticky-filter-card::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sticky-filter-card::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sticky-filter-card::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.sticky-filter-card::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 @media (max-width: 900px) {

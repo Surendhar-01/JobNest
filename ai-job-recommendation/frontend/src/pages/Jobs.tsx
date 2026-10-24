@@ -525,18 +525,28 @@ export function Jobs() {
       <Row gutter={[24, 24]}>
         {/* Desktop Sidebar Filters */}
         <Col xs={0} lg={6}>
-          <Card
+          <div
             style={{
-              borderRadius: 16,
-              border: '1px solid #e2e8f0',
               position: 'sticky',
-              top: 88,
-              boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+              top: 76,
+              zIndex: 10,
             }}
-            styles={{ body: { padding: '16px 18px 20px' } }}
           >
-            {filterSidebarContent}
-          </Card>
+            <Card
+              style={{
+                borderRadius: 16,
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+                background: '#ffffff',
+                maxHeight: 'calc(100vh - 96px)',
+                overflowY: 'auto',
+              }}
+              styles={{ body: { padding: '16px 18px 20px' } }}
+              className="sticky-filter-card"
+            >
+              {filterSidebarContent}
+            </Card>
+          </div>
         </Col>
 
         {/* Mobile Filter Drawer */}
@@ -549,7 +559,7 @@ export function Jobs() {
           {filterSidebarContent}
         </Drawer>
 
-        {/* Jobs Listing Column */}
+        {/* Real Openings Listing Column */}
         <Col xs={24} lg={18}>
           {/* Header Bar */}
           <div
@@ -647,7 +657,7 @@ export function Jobs() {
               </Row>
 
               {/* Pagination */}
-              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 32 }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 32, paddingBottom: 24 }}>
                 <Pagination
                   current={page}
                   total={data.total}
