@@ -596,7 +596,9 @@ def users(
     page_size: int = Query(20, ge=1, le=100),
     q: str | None = Query(None, max_length=120),
     role: Literal['student', 'admin'] | None = None,
-    active: bool | None = None
+    department: str | None = None,
+    active: bool | None = None,
+    exclude_admin: bool = Query(False)
 ):
     repo = Repository(privileged=True)
     rows = repo.all(
@@ -604,12 +606,16 @@ def users(
         order='created_at.desc',
         select='id,full_name,email,role,department,created_at,is_active'
     )
+    if exclude_admin:
+        rows = [row for row in rows if row.get('role') != 'admin']
     if q and isinstance(q, str):
         search = q.casefold()
         rows = [row for row in rows if search in str(row.get('full_name') or '').casefold()
                 or search in str(row.get('email') or '').casefold()]
     if role:
         rows = [row for row in rows if row.get('role') == role]
+    if department:
+        rows = [row for row in rows if str(row.get('department') or '').casefold() == department.casefold()]
     if active is not None:
         rows = [row for row in rows if bool(row.get('is_active', True)) == active]
     total = len(rows)
