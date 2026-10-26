@@ -14,19 +14,38 @@ import {
 
 const { Text } = Typography
 
+const DEPARTMENTS = [
+  'Computer Science & Engineering',
+  'Information Technology',
+  'Artificial Intelligence & Data Science',
+  'Artificial Intelligence & Machine Learning',
+  'Electronics & Communication',
+  'Electrical & Electronics',
+  'VLSI Design & Technology',
+  'Mechanical Engineering',
+  'Mechatronics Engineering',
+  'Civil Engineering',
+  'Biotechnology',
+  'Food Technology',
+  'Textile Technology',
+  'Master of Business Administration',
+  'Master of Computer Applications',
+]
+
 export function AdminUsers() {
   const { profile } = useAuth()
   const cache = useQueryClient()
   const [search, setSearch] = useState('')
-  const [role, setRole] = useState<string>()
+  const [department, setDepartment] = useState<string>()
   const [status, setStatus] = useState<string>()
   const [page, setPage] = useState(1)
   const pageSize = 20
   const params = {
     page,
     page_size: pageSize,
+    exclude_admin: true,
     ...(search.trim() ? { q: search.trim() } : {}),
-    ...(role ? { role } : {}),
+    ...(department ? { department } : {}),
     ...(status ? { active: status === 'active' } : {}),
   }
   const usersQuery = useQuery({
@@ -82,7 +101,7 @@ export function AdminUsers() {
         </Space>
       ),
     },
-    { title: 'Role', dataIndex: 'role', key: 'role', render: (value: string) => <Tag>{value}</Tag> },
+    { title: 'Role', dataIndex: 'role', key: 'role', render: (value: string) => <Tag color="blue">{value ? value.toUpperCase() : 'STUDENT'}</Tag> },
     { title: 'Department', dataIndex: 'department', key: 'department', render: (value: string | null) => value || '—' },
     { title: 'Registered', dataIndex: 'created_at', key: 'created_at', render: (value: string) => formatAdminDate(value, false) },
     {
@@ -107,11 +126,13 @@ export function AdminUsers() {
     },
   ]
 
+  const studentUsers = (usersQuery.data?.items || []).filter((u) => u.role !== 'admin')
+
   return (
     <div className="admin-page">
       <AdminPageHeader
         title="User management"
-        description="Search registered accounts, review roles and status, and control account access."
+        description="Search registered student accounts, review departments and status, and control account access."
       />
       <div className="admin-toolbar">
         <Input
@@ -124,11 +145,12 @@ export function AdminUsers() {
         />
         <Select
           allowClear
-          value={role}
-          onChange={(value) => { setRole(value); setPage(1) }}
-          placeholder="All roles"
-          options={[{ label: 'Student', value: 'student' }, { label: 'Admin', value: 'admin' }]}
+          value={department}
+          onChange={(value) => { setDepartment(value); setPage(1) }}
+          placeholder="All departments"
+          options={DEPARTMENTS.map((d) => ({ label: d, value: d }))}
           className="admin-filter-select"
+          style={{ minWidth: 220 }}
         />
         <Select
           allowClear
@@ -143,14 +165,14 @@ export function AdminUsers() {
         <div className="admin-panel admin-table-panel">
           <div className="admin-table-heading">
             <div>
-              <Text strong>Registered accounts</Text>
-              <Text type="secondary">{usersQuery.data?.total ?? 0} total users</Text>
+              <Text strong>Registered students</Text>
+              <Text type="secondary">{usersQuery.data?.total ?? 0} total students</Text>
             </div>
           </div>
           <Table<AdminUser>
             rowKey="id"
             columns={columns}
-            dataSource={usersQuery.data?.items || []}
+            dataSource={studentUsers}
             loading={usersQuery.isFetching}
             scroll={{ x: 860 }}
             pagination={{
@@ -160,7 +182,7 @@ export function AdminUsers() {
               showSizeChanger: false,
               onChange: setPage,
             }}
-            locale={{ emptyText: search ? 'No users match your search.' : 'No users found.' }}
+            locale={{ emptyText: search ? 'No students match your search.' : 'No students found.' }}
           />
         </div>
       </AdminQueryState>

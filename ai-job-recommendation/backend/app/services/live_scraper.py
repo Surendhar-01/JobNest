@@ -41,7 +41,10 @@ COMMON_SKILLS = [
     "TensorFlow", "Pandas", "NumPy", "Scikit-Learn", "Data Science", "Data Engineering",
     "AutoCAD", "SolidWorks", "CATIA", "ANSYS", "Revit", "Civil 3D", "STAAD Pro", "GIS",
     "VLSI", "Embedded Systems", "PCB Design", "Microcontrollers", "Arduino", "IoT",
-    "Robotics", "PLC", "SCADA", "MATLAB", "Simulink", "Quality Assurance", "Testing"
+    "Robotics", "PLC", "SCADA", "MATLAB", "Simulink", "Quality Assurance", "Testing",
+    "Verilog", "VHDL", "FPGA", "ASIC", "Mechatronics", "Automation", "ROS",
+    "Bioinformatics", "Microbiology", "Biochemistry", "Food Science", "Food Processing", "HACCP",
+    "Textile Design", "Weaving", "Spinning", "Apparel", "Garment Manufacturing"
 ]
 
 def extract_skills_from_text(text: str) -> List[str]:
@@ -58,14 +61,32 @@ def extract_skills_from_text(text: str) -> List[str]:
 
 def infer_department(title: str, skills: List[str], text: str = "") -> str:
     combined = (title + " " + " ".join(skills) + " " + text).lower()
-    if any(k in combined for k in ["civil", "structural", "autocad civil", "construction", "site engineer", "building", "architect", "surveying", "staad", "revit"]):
+    if any(k in combined for k in ["civil", "structural", "autocad civil", "construction", "site engineer", "building", "surveying", "staad", "revit"]):
         return "Civil Engineering"
+    if any(k in combined for k in ["mechatronics", "robotics", "automation engineer", "ros", "actuator"]):
+        return "Mechatronics Engineering"
     if any(k in combined for k in ["mechanical", "cad", "solidworks", "catia", "thermal", "hvac", "automobile", "machining", "cnc", "piping", "ansys"]):
         return "Mechanical Engineering"
-    if any(k in combined for k in ["embedded", "vlsi", "electronics", "circuit", "pcb", "microcontroller", "verilog", "telecom", "fpga", "hardware"]):
+    if any(k in combined for k in ["vlsi", "verilog", "vhdl", "asic", "fpga", "chip design", "semiconductor"]):
+        return "VLSI Design & Technology"
+    if any(k in combined for k in ["biotech", "bioinformatics", "biology", "genetics", "microbiology", "biochemical", "pharma"]):
+        return "Biotechnology"
+    if any(k in combined for k in ["food tech", "food processing", "food science", "nutrition", "dairy", "haccp"]):
+        return "Food Technology"
+    if any(k in combined for k in ["textile", "garment", "apparel", "fabric", "weaving", "spinning", "yarn"]):
+        return "Textile Technology"
+    if any(k in combined for k in ["embedded", "electronics", "circuit", "pcb", "microcontroller", "telecom", "hardware"]):
         return "Electronics & Communication"
     if any(k in combined for k in ["electrical", "power systems", "plc", "scada", "substation", "switchgear", "transformer"]):
         return "Electrical & Electronics"
+    if any(k in combined for k in ["machine learning", "deep learning", "nlp", "llm", "ai engineer", "pytorch", "tensorflow", "computer vision"]):
+        return "Artificial Intelligence & Machine Learning"
+    if any(k in combined for k in ["data science", "data analyst", "data engineer", "big data", "tableau", "power bi"]):
+        return "Artificial Intelligence & Data Science"
+    if any(k in combined for k in ["devops", "cloud", "aws", "azure", "system admin", "network engineer", "cybersecurity"]):
+        return "Information Technology"
+    if any(k in combined for k in ["business analyst", "marketing", "hr executive", "finance", "operations manager", "product manager"]):
+        return "Master of Business Administration"
     return "Computer Science & Engineering"
 
 

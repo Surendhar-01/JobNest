@@ -51,11 +51,39 @@ interface PortalStatusItem {
 
 const DEPARTMENTS = [
   'Computer Science & Engineering',
-  'Civil Engineering',
-  'Mechanical Engineering',
+  'Information Technology',
+  'Artificial Intelligence & Data Science',
+  'Artificial Intelligence & Machine Learning',
   'Electronics & Communication',
   'Electrical & Electronics',
+  'VLSI Design & Technology',
+  'Mechanical Engineering',
+  'Mechatronics Engineering',
+  'Civil Engineering',
+  'Biotechnology',
+  'Food Technology',
+  'Textile Technology',
+  'Master of Business Administration',
+  'Master of Computer Applications',
 ]
+
+const DEPT_SHORT_LABELS: Record<string, string> = {
+  'Computer Science & Engineering': 'CSE',
+  'Information Technology': 'IT',
+  'Artificial Intelligence & Data Science': 'AI & DS',
+  'Artificial Intelligence & Machine Learning': 'AI & ML',
+  'Electronics & Communication': 'ECE',
+  'Electrical & Electronics': 'EEE',
+  'VLSI Design & Technology': 'VLSI',
+  'Mechanical Engineering': 'Mechanical',
+  'Mechatronics Engineering': 'Mechatronics',
+  'Civil Engineering': 'Civil',
+  'Biotechnology': 'Biotech',
+  'Food Technology': 'Food Tech',
+  'Textile Technology': 'Textile',
+  'Master of Business Administration': 'MBA',
+  'Master of Computer Applications': 'MCA',
+}
 
 const SOURCE_LABELS: Record<string, string> = {
   linkedin: 'LinkedIn',
@@ -463,7 +491,7 @@ export function Jobs() {
           </Button>
           {DEPARTMENTS.map((dept) => {
             const isSelected = department.toLowerCase() === dept.toLowerCase()
-            const shortLabel = dept.includes('Computer') ? 'CSE' : dept.includes('Civil') ? 'Civil' : dept.includes('Mechanical') ? 'Mechanical' : dept.includes('Electronics & Communication') ? 'ECE' : 'EEE'
+            const shortLabel = DEPT_SHORT_LABELS[dept] || dept
             return (
               <Button
                 key={dept}

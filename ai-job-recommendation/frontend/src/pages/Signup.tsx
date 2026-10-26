@@ -239,14 +239,22 @@ export function Signup() {
                 onChange={(e) => setDepartment(e.target.value)}
                 style={{ width: '100%', height: 40, borderRadius: 10, border: '1px solid #d9d9d9', padding: '0 8px', fontSize: 12, background: '#ffffff', color: '#0f172a' }}
               >
-                <option value="Computer Science">Computer Science</option>
-                <option value="Information Technology">Information Tech</option>
-                <option value="Electrical Engineering">Electrical Eng.</option>
-                <option value="Mechanical Engineering">Mechanical Eng.</option>
-                <option value="Civil Engineering">Civil Eng.</option>
-                <option value="Business Administration">Business / Mgmt</option>
-                <option value="Data Science">Data Science</option>
-                <option value="Other">Other</option>
+                <option value="Computer Science & Engineering">B.E. Computer Science & Engineering (CSE)</option>
+                <option value="Information Technology">B.Tech. Information Technology (IT)</option>
+                <option value="Artificial Intelligence & Data Science">B.Tech. AI & Data Science (AI & DS)</option>
+                <option value="Artificial Intelligence & Machine Learning">B.E. AI & Machine Learning (AI & ML)</option>
+                <option value="Electronics & Communication">B.E. Electronics & Communication (ECE)</option>
+                <option value="Electrical & Electronics">B.E. Electrical & Electronics (EEE)</option>
+                <option value="VLSI Design & Technology">B.E. VLSI Design & Technology</option>
+                <option value="Mechanical Engineering">B.E. Mechanical Engineering</option>
+                <option value="Mechatronics Engineering">B.E. Mechatronics Engineering</option>
+                <option value="Civil Engineering">B.E. Civil Engineering</option>
+                <option value="Biotechnology">B.Tech. Biotechnology</option>
+                <option value="Food Technology">B.Tech. Food Technology</option>
+                <option value="Textile Technology">B.Tech. Textile Technology</option>
+                <option value="Master of Business Administration">MBA - Management Studies</option>
+                <option value="Master of Computer Applications">MCA - Computer Applications</option>
+                <option value="Other">Other Department</option>
               </select>
             </Col>
 
@@ -305,6 +313,7 @@ export function Signup() {
             size="large"
             block
             htmlType="submit"
+            disabled={!termsAccepted || loading}
             loading={loading}
             icon={<ArrowRightOutlined />}
             style={{ borderRadius: 10, fontWeight: 700, height: 44 }}
